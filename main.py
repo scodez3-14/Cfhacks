@@ -4,6 +4,8 @@ import asyncio
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler
+import requests
+import random
 
 # Load environment variables
 load_dotenv()
@@ -44,7 +46,6 @@ async def count(update: Update, context: ContextTypes.DEFAULT_TYPE):
         rating = context.user_data['rating']
 
         # Fetch Codeforces problems
-        import requests
         url = "https://codeforces.com/api/problemset.problems"
         res = requests.get(url).json()
         problems = res["result"]["problems"]
@@ -60,7 +61,6 @@ async def count(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(f"😢 No new problems found for rating {rating}")
             return ConversationHandler.END
 
-        import random
         random.shuffle(unsolved_problems)
         selected = unsolved_problems[:count]
 
@@ -105,8 +105,11 @@ def set_webhook():
     webhook_url = f"https://your-render-app-name.onrender.com/{TOKEN}"
     application.bot.set_webhook(webhook_url)
 
-if __name__ == "__main__":
-    # For production, set webhook
+# Initialize webhook when app starts
+with flask_app.app_context():
     set_webhook()
+
+if __name__ == "__main__":
     # Run Flask app
-    flask_app.run(host='0.0.0.0', port=os.getenv('PORT', 5000))
+    port = int(os.environ.get('PORT', 5000))
+    flask_app.run(host='0.0.0.0', port=port)
