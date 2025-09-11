@@ -23,7 +23,7 @@ flask_app = Flask(__name__)
 # Initialize Telegram application
 application = Application.builder().token(TOKEN).build()
 
-# Your handler functions
+# Handler functions
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "👋 Welcome!\nPlease enter the rating you want (e.g., 800, 1000, 1200):"
@@ -76,6 +76,11 @@ async def count(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Please enter a valid number for count:")
         return ASK_COUNT
 
+# 🔹 Reset command
+async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['solved'] = set()
+    await update.message.reply_text("✅ Your solved problems history has been cleared!")
+
 # Add conversation handler
 conv_handler = ConversationHandler(
     entry_points=[CommandHandler('start', start)],
@@ -87,6 +92,7 @@ conv_handler = ConversationHandler(
 )
 
 application.add_handler(conv_handler)
+application.add_handler(CommandHandler("reset", reset))
 
 # Flask routes
 @flask_app.route('/')
@@ -102,14 +108,13 @@ def webhook():
 
 def set_webhook():
     # Set webhook for Telegram
-    webhook_url = f"https://your-render-app-name.onrender.com/{TOKEN}"
-    application.bot.set_webhook(webhook_url)
+    webhook_url = f"https://cfhacks-2.onrender.com/{TOKEN}"
+    asyncio.run(application.bot.set_webhook(webhook_url))
 
 # Initialize webhook when app starts
 with flask_app.app_context():
     set_webhook()
 
 if __name__ == "__main__":
-    # Run Flask app
     port = int(os.environ.get('PORT', 5000))
     flask_app.run(host='0.0.0.0', port=port)
