@@ -100,7 +100,13 @@ def webhook():
     asyncio.run(application.process_update(update))
     return 'ok'
 
+def set_webhook():
+    # Set webhook for Telegram
+    webhook_url = f"https://your-render-app-name.onrender.com/{TOKEN}"
+    application.bot.set_webhook(webhook_url)
+
 if __name__ == "__main__":
-    # For local development, use polling
-    print("Running in polling mode for local development")
-    application.run_polling()
+    # For production, set webhook
+    set_webhook()
+    # Run Flask app
+    flask_app.run(host='0.0.0.0', port=os.getenv('PORT', 5000))
