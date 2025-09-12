@@ -1,15 +1,26 @@
 from flask import Flask, request
 import os
 import asyncio
+import logging
+import json
 from dotenv import load_dotenv
 from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    MessageHandler,
+    filters,
+    ContextTypes,
+    ConversationHandler
+)
 import requests
 import random
 
+# Enable logging
+logging.basicConfig(level=logging.INFO)
+
 # Load environment variables
 load_dotenv()
-
 TOKEN = os.getenv("TOKEN")
 if not TOKEN:
     raise ValueError("No TOKEN found in environment variables")
@@ -23,7 +34,7 @@ flask_app = Flask(__name__)
 # Initialize Telegram application
 application = Application.builder().token(TOKEN).build()
 
-# Handler functions
+# ---------------- Telegram Handlers ----------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "👋 Welcome!\nPlease enter the rating you want (e.g., 800, 1000, 1200):"
@@ -53,7 +64,7 @@ async def count(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Filter by rating
         rated_problems = [p for p in problems if "rating" in p and p["rating"] == rating]
 
-        # Track solved problems for this user
+        # Track solved problems
         solved = context.user_data.get('solved', set())
         unsolved_problems = [p for p in rated_problems if (p['contestId'], p['index']) not in solved]
 
@@ -81,6 +92,15 @@ async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['solved'] = set()
     await update.message.reply_text("✅ Your solved problems history has been cleared!")
 
+# 🔹 Help command
+async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "📌 Available commands:\n"
+        "/start - Get problems by rating\n"
+        "/reset - Clear solved problems\n"
+        "/help - Show this message"
+    )
+
 # Add conversation handler
 conv_handler = ConversationHandler(
     entry_points=[CommandHandler('start', start)],
@@ -93,17 +113,26 @@ conv_handler = ConversationHandler(
 
 application.add_handler(conv_handler)
 application.add_handler(CommandHandler("reset", reset))
+application.add_handler(CommandHandler("help", help_cmd))
 
-# Flask routes
+# ---------------- Flask Routes ----------------
 @flask_app.route('/')
 def home():
     return "Telegram bot is running!"
 
 @flask_app.route(f'/{TOKEN}', methods=['POST'])
 def webhook():
-    json_str = request.get_data().decode('UTF-8')
-    update = Update.de_json(json_str, application.bot)
-    asyncio.run(application.process_update(update))
+    try:
+        data = request.get_json(force=True)  # dict, not string
+        update = Update.de_json(data, application.bot)
+
+        loop = asyncio.get_event_loop()
+        loop.create_task(application.process_update(update))
+
+    except Exception as e:
+        logging.error(f"Webhook error: {e}")
+        return 'error', 500
+
     return 'ok'
 
 def set_webhook():
