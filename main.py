@@ -87,12 +87,10 @@ async def count(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Please enter a valid number for count:")
         return ASK_COUNT
 
-# 🔹 Reset command
 async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['solved'] = set()
     await update.message.reply_text("✅ Your solved problems history has been cleared!")
 
-# 🔹 Help command
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "📌 Available commands:\n"
@@ -123,27 +121,30 @@ def home():
 @flask_app.route(f'/{TOKEN}', methods=['POST'])
 def webhook():
     try:
-        data = request.get_json(force=True)  # dict, not string
+        data = request.get_json()
         update = Update.de_json(data, application.bot)
-
-        loop = asyncio.get_event_loop()
-        loop.create_task(application.process_update(update))
-
+        
+        # Process update asynchronously
+        asyncio.run(application.process_update(update))
+        
     except Exception as e:
         logging.error(f"Webhook error: {e}")
         return 'error', 500
 
     return 'ok'
 
-def set_webhook():
-    # Set webhook for Telegram
+async def set_webhook():
     webhook_url = f"https://cfhacks-2.onrender.com/{TOKEN}"
-    asyncio.run(application.bot.set_webhook(webhook_url))
+    await application.bot.set_webhook(webhook_url)
 
-# Initialize webhook when app starts
-with flask_app.app_context():
-    set_webhook()
+# Set webhook when app starts
+@flask_app.before_first_request
+def initialize():
+    asyncio.run(set_webhook())
+    logging.info("Webhook set successfully")
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
+    # Initialize webhook before running
+    asyncio.run(set_webhook())
     flask_app.run(host='0.0.0.0', port=port)
