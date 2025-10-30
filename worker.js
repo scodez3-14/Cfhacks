@@ -1,6 +1,7 @@
 // worker.js - COMPLETE ENHANCED VERSION
 
-const botToken= 'xxx';
+const botToken= 'xxxx';
+// bind a kv namespace of var name KV
 // In-memory cache for CF problems and contests
 let problemsCache = {
   data: null,
